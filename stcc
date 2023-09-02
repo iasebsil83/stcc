@@ -100,6 +100,7 @@ def main(args):
 				print("                        [Only available for executable compilation]")
 				print("  -e, --executable    : Compile into executable. (default target)")
 				print("  -f, --force         : Output result even if file already exists.")
+				print("  -h, --help          : Show this help menu.")
 				print("  -k, --keep-tmp-obj  : Keep temporarily generated object files.")
 				print("  -o, --output <name> : Give the name of the result to produce (extension included).")
 				print("  -s, --shared        : Compile into a shared library.")
