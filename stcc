@@ -110,9 +110,9 @@ def main(args):
 				print("                        Each shared library must be given in absolute path.")
 				print("                        [Only available for executable compilation]")
 				print()
-				print("NOTE: -e & -s are not compatible together.")
-				print("      You cannot generate both a shared library AND an executable.")
-				print("      The last option given will be taken into account.")
+				print("WARNING: Options '-e' and '-s' are not compatible together.")
+				print("         You cannot generate both a shared library AND an executable.")
+				print("         The last option given will be taken into account.")
 				print()
 				exit(0)
 
