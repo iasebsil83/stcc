@@ -8,7 +8,7 @@
 # -------- IMPORTATIONS --------
 
 #system
-import os, sys, inspect
+import os, sys
 
 
 
@@ -66,12 +66,12 @@ def main(args):
 	# INITIALIZATION
 
 	#options
-	abstract_dynlibs_locations = False
-	generate_dynlib            = False
-	force_output               = False
-	keep_object_files          = False
-	output_filename            = ""
-	use_some_dynlibs           = False
+	abstract_shl_locations = False
+	generate_shl           = False
+	force_output           = False
+	keep_object_files      = False
+	output_filename        = ""
+	use_some_shl           = False
 
 	#compilation
 	dot_extension = ""
@@ -98,36 +98,33 @@ def main(args):
 				print("Options:")
 				print("  -a, --abstract      : Do not hard-write shared libraries locations in result.")
 				print("                        [Only available for executable compilation]")
-				print("  -d, --dynlib        : Compile into a dynamic library.")
-				print("                        Several files are allowed with this option.")
-				print("                        The output name will be taken from the first one.")
-				print("  -e, --executable    : Compile into executable. (enabled by default)")
+				print("  -e, --executable    : Compile into executable. (default target)")
 				print("  -f, --force         : Output result even if file already exists.")
 				print("  -k, --keep-tmp-obj  : Keep temporarily generated object files.")
 				print("  -o, --output <name> : Give the name of the result to produce (extension included).")
-				print("  -u, --use-dyn       : Link some shared libraries (first is C source, others are dynlibs).")
-				print("                        Each dynamic library must be given in absolute path.")
+				print("  -s, --shared        : Compile into a shared library.")
+				print("                        Several files are allowed with this option.")
+				print("                        The output name will be taken from the first one given.")
+				print("  -u, --use-shl       : Link some shared libraries (first is C source, others are shl).")
+				print("                        Each shared library must be given in absolute path.")
 				print("                        [Only available for executable compilation]")
+				print()
+				print("NOTE: -e & -s are not compatible together.")
+				print("      You cannot generate both a shared library AND an executable.")
+				print("      The last option given will be taken into account.")
 				print()
 				exit(0)
 
-			#option : abstract dynlibs locations
+			#option : abstract shl locations
 			elif args[a] in ("-a", "--abstract"):
-				abstract_dynlibs_locations = True
-
-				#remove from arguments
-				indexes_to_remove.append(a)
-
-			#option : dynamic library
-			elif args[a] in ("-d", "--dynlib"):
-				generate_dynlib = True
+				abstract_shl_locations = True
 
 				#remove from arguments
 				indexes_to_remove.append(a)
 
 			#option : executable
 			elif args[a] in ("-e", "--executable"):
-				generate_dynlib = False
+				generate_shl = False
 
 				#remove from arguments
 				indexes_to_remove.append(a)
@@ -158,9 +155,16 @@ def main(args):
 				indexes_to_remove.append(a)
 				indexes_to_remove.append(a+1)
 
+			#option : shared library
+			elif args[a] in ("-s", "--shared"):
+				generate_shl = True
+
+				#remove from arguments
+				indexes_to_remove.append(a)
+
 			#option : use given dynamic libraries
 			elif args[a] in ("-u", "--use"):
-				use_some_dynlibs = True
+				use_some_shl = True
 
 				#remove from arguments
 				indexes_to_remove.append(a)
@@ -181,7 +185,7 @@ def main(args):
 	# PREPARE COMPILATION COMMAND
 
 	#case 1 : dynlib mode
-	if generate_dynlib:
+	if generate_shl:
 
 		#add every given file
 		for f in args:
@@ -195,17 +199,17 @@ def main(args):
 			gcc_commands.append("gcc " + GCC_DEFAULT_FLAGS + "-fPIC -c " + f)
 
 		#set gcc command into dynlib generation
-		dot_extension = ".dyn"
+		dot_extension = ".shl"
 		gcc_commands.append("gcc -shared " + ' '.join(object_files) )
 
 	#case 2 : executable mode
 	else:
 
-		#require one argument (no dynlibs) or more (dynlibs)
+		#require one argument (no shl) or more (shl)
 		if len(args) == 1:
-			if use_some_dynlibs:
-				Err_fatal("You must specify at least 1 dynamic library.")
-		elif not use_some_dynlibs:
+			if use_some_shl:
+				Err_fatal("You must specify at least 1 shared library.")
+		elif not use_some_shl:
 			Err_fatal("Only 1 argument is allowed (only 1 C source at a time).")
 
 		#check validity of C source
@@ -217,32 +221,31 @@ def main(args):
 		gcc_commands.append("gcc " + GCC_DEFAULT_FLAGS + args[0])
 
 		#use shared libraries
-		if use_some_dynlibs:
+		if use_some_shl:
 
 			#for each library given
-			dynlibs_dirs = []
-			for d in args[1:]:
+			shl_dirs = []
+			for s in args[1:]:
 
 				#check validity of dynamic library
-				if not os.path.isfile(d):
-					Err_fatal("Dynamic library '" + d + "' is not a file.")
+				if not os.path.isfile(s):
+					Err_fatal("Shared library '" + s + "' is not a file.")
 
 				#store their locations
-				dir = os.path.dirname(d)
-				if dir not in dynlibs_dirs:
-					dynlibs_dirs.append(dir)
+				dir = os.path.dirname(s)
+				if dir not in shl_dirs:
+					shl_dirs.append(dir)
 
 				#list required libraries
-				dynlib_name = os.path.basename(d)
-				gcc_commands[0] += " -l:" + dynlib_name
+				gcc_commands[0] += " -l:" + os.path.basename(s)
 
 			#add library paths as well
-			dynlibs_locations = ':'.join(dynlibs_dirs)
-			for dd in dynlibs_dirs:
-				gcc_commands[0] += " -L" + dd
-			if not abstract_dynlibs_locations:
-				for dd in dynlibs_dirs:
-					gcc_commands[0] += " -Wl,-rpath=" + dd
+			shl_locations = ':'.join(shl_dirs)
+			for sl in shl_dirs:
+				gcc_commands[0] += " -L" + sl
+			if not abstract_shl_locations:
+				for sl in shl_dirs:
+					gcc_commands[0] += " -Wl,-rpath=" + sl
 
 	#set output filename (if needed)
 	if len(output_filename) == 0:
@@ -261,7 +264,6 @@ def main(args):
 	# COMPILE
 
 	#run GCC commands
-	print(gcc_commands)
 	for cmd in gcc_commands:
 		err = os.system(cmd)
 		if err:
